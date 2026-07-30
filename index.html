@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Priorizador de Automações — Qual tarefa manual está te custando mais?</title>
+<meta property="og:title" content="Priorizador de Automações — qual tarefa manual mais queima dinheiro na sua operação?">
+<meta property="og:description" content="Monte sua fila de tarefas repetitivas. Ela se reordena sozinha pelo custo/mês e diz o que automatizar primeiro. 2 minutos. by arkynIA tech.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F2EFE7;
+    --paper-2:#FBFAF5;
+    --ink:#17201C;
+    --ink-soft:#4A5450;
+    --rule:#D8D3C4;
+    --credit:#0E7A5F;
+    --debit:#B23A2E;
+    --amber:#B07A1E;
+    --muted:#8A8578;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Archivo',system-ui,sans-serif;
+    font-variation-settings:'wdth' 100;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  .mono{font-family:'IBM Plex Mono',monospace}
+
+  .wrap{max-width:920px;margin:0 auto;padding:0 20px}
+
+  /* ---------- HERO ---------- */
+  header{padding:56px 0 36px;border-bottom:2px solid var(--ink)}
+  .eyebrow{
+    display:inline-block;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--paper-2);background:var(--ink);
+    padding:5px 10px;border-radius:4px;margin-bottom:18px;
+  }
+  h1{
+    font-weight:850;
+    font-variation-settings:'wdth' 76;
+    font-size:clamp(34px,6vw,58px);
+    line-height:1.02;letter-spacing:-.01em;
+    text-transform:uppercase;
+    max-width:15ch;
+  }
+  h1 .stroke{color:var(--debit)}
+  .lede{margin-top:16px;max-width:56ch;color:var(--ink-soft);font-size:17px}
+  .lede b{color:var(--ink)}
+
+  /* ---------- TOTALS BAR ---------- */
+  .totals{
+    position:sticky;top:0;z-index:50;
+    background:var(--ink);color:var(--paper-2);
+    border-bottom:1px solid #000;
+  }
+  .totals-in{
+    max-width:920px;margin:0 auto;padding:12px 20px;
+    display:flex;gap:22px;align-items:baseline;flex-wrap:wrap;
+  }
+  .tot{display:flex;flex-direction:column}
+  .tot .k{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;opacity:.65}
+  .tot .v{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:clamp(16px,3vw,22px)}
+  .tot .v.debit{color:#F0A79A}
+  .tot.push{margin-left:auto}
+  .tot .v.small{font-size:14px;opacity:.85}
+
+  /* ---------- SECTIONS ---------- */
+  section{padding:36px 0}
+  .sec-label{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--muted);margin-bottom:14px;
+    display:flex;align-items:center;gap:10px;
+  }
+  .sec-label::after{content:"";flex:1;height:1px;background:var(--rule)}
+
+  /* ---------- PRESETS ---------- */
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{
+    font-family:'Archivo',sans-serif;font-size:14px;font-weight:600;
+    background:var(--paper-2);border:1.5px solid var(--rule);
+    color:var(--ink);padding:9px 14px;border-radius:999px;
+    cursor:pointer;transition:border-color .15s, transform .1s, background .15s;
+  }
+  .chip:hover{border-color:var(--ink)}
+  .chip:active{transform:scale(.97)}
+  .chip.used{opacity:.35;pointer-events:none;text-decoration:line-through}
+  .chip.custom{border-style:dashed;color:var(--ink-soft)}
+  .chip:focus-visible,.btn:focus-visible,input:focus-visible,select:focus-visible{
+    outline:2px solid var(--credit);outline-offset:2px;
+  }
+
+  /* ---------- COST/HOUR ---------- */
+  .who{
+    margin-top:26px;background:var(--paper-2);
+    border:1.5px solid var(--rule);border-radius:var(--radius);
+    padding:16px 18px;display:flex;gap:16px;align-items:center;flex-wrap:wrap;
+  }
+  .who .q{font-weight:700;font-size:15px}
+  .who .seg{display:flex;gap:6px;flex-wrap:wrap}
+  .seg button{
+    font-family:'IBM Plex Mono',monospace;font-size:12.5px;
+    border:1.5px solid var(--rule);background:transparent;color:var(--ink-soft);
+    padding:7px 11px;border-radius:8px;cursor:pointer;transition:all .15s;
+  }
+  .seg button.on{background:var(--ink);color:var(--paper-2);border-color:var(--ink)}
+  .who .custo-out{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:15px;margin-left:auto}
+
+  /* ---------- QUEUE ---------- */
+  #fila{display:flex;flex-direction:column;gap:14px;min-height:80px}
+  .empty{
+    border:1.5px dashed var(--rule);border-radius:var(--radius);
+    padding:34px 20px;text-align:center;color:var(--muted);font-size:15px;
+  }
+
+  .ticket{
+    background:var(--paper-2);
+    border:1.5px solid var(--rule);
+    border-radius:var(--radius);
+    padding:16px 18px 18px;
+    position:relative;
+    will-change:transform;
+  }
+  .ticket.rank-1{border-color:var(--ink);box-shadow:4px 4px 0 var(--ink)}
+
+  .t-head{display:flex;align-items:flex-start;gap:14px}
+  .t-pos{
+    font-family:'IBM Plex Mono',monospace;font-weight:600;
+    font-size:clamp(26px,5vw,36px);line-height:1;
+    color:var(--ink);min-width:2ch;
+    font-variant-numeric:tabular-nums;
+  }
+  .rank-1 .t-pos{color:var(--debit)}
+  .t-name{font-weight:750;font-size:clamp(16px,3.4vw,19px);line-height:1.2;flex:1;padding-top:3px}
+  .t-money{text-align:right}
+  .t-money .rs{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:clamp(16px,3.6vw,21px);color:var(--debit);white-space:nowrap}
+  .t-money .cap{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+
+  .verdict{
+    display:inline-block;margin-top:10px;
+    font-family:'IBM Plex Mono',monospace;font-size:10.5px;font-weight:600;
+    letter-spacing:.12em;text-transform:uppercase;
+    padding:4px 9px;border-radius:4px;border:1.5px solid;
+    transform:rotate(-1deg);
+  }
+  .v-now{color:var(--debit);border-color:var(--debit)}
+  .v-quick{color:var(--credit);border-color:var(--credit)}
+  .v-project{color:var(--amber);border-color:var(--amber)}
+  .v-later{color:var(--muted);border-color:var(--muted)}
+
+  .t-ctrls{
+    margin-top:14px;padding-top:14px;border-top:1px dashed var(--rule);
+    display:grid;grid-template-columns:repeat(3,1fr);gap:14px 18px;
+  }
+  @media(max-width:640px){.t-ctrls{grid-template-columns:1fr 1fr}}
+  .ctrl label{
+    display:flex;justify-content:space-between;align-items:baseline;
+    font-family:'IBM Plex Mono',monospace;font-size:10.5px;
+    letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);
+    margin-bottom:6px;gap:6px;
+  }
+  .ctrl label output{font-weight:600;color:var(--ink);font-size:12px;white-space:nowrap}
+  input[type=range]{
+    -webkit-appearance:none;appearance:none;width:100%;height:22px;background:transparent;cursor:pointer;
+  }
+  input[type=range]::-webkit-slider-runnable-track{height:3px;background:var(--rule);border-radius:2px}
+  input[type=range]::-moz-range-track{height:3px;background:var(--rule);border-radius:2px}
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;appearance:none;width:18px;height:18px;border-radius:50%;
+    background:var(--ink);margin-top:-7.5px;border:3px solid var(--paper-2);box-shadow:0 0 0 1.5px var(--ink);
+  }
+  input[type=range]::-moz-range-thumb{
+    width:12px;height:12px;border-radius:50%;background:var(--ink);border:3px solid var(--paper-2);box-shadow:0 0 0 1.5px var(--ink);
+  }
+  .ctrl.cx .seg{display:flex;gap:5px}
+  .ctrl.cx .seg button{flex:1;padding:6px 4px;font-size:11px}
+
+  .t-meta{
+    margin-top:10px;font-family:'IBM Plex Mono',monospace;
+    font-size:11.5px;color:var(--muted);
+    display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;
+  }
+  .t-del{
+    background:none;border:none;color:var(--muted);cursor:pointer;
+    font-family:'IBM Plex Mono',monospace;font-size:11.5px;
+    text-decoration:underline;padding:0;
+  }
+  .t-del:hover{color:var(--debit)}
+
+  /* ---------- SUMMARY / CTA ---------- */
+  .verdict-box{
+    background:var(--ink);color:var(--paper-2);
+    border-radius:var(--radius);padding:26px 24px;
+  }
+  .verdict-box .cap{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;opacity:.65}
+  .verdict-box .line{font-size:clamp(18px,3.6vw,24px);font-weight:750;margin-top:8px;line-height:1.3}
+  .verdict-box .line .hl{color:#F0A79A}
+  .verdict-box .sub{margin-top:10px;font-size:14.5px;opacity:.85;max-width:60ch}
+  .cta{
+    display:inline-flex;align-items:center;gap:9px;margin-top:18px;
+    background:#25D366;color:#062B14;
+    font-weight:750;font-size:15px;text-decoration:none;
+    padding:13px 22px;border-radius:10px;
+    transition:transform .12s;
+  }
+  .cta:hover{transform:translateY(-2px)}
+  .cta:active{transform:translateY(0)}
+  .cta svg{width:18px;height:18px;flex:none}
+
+  /* ---------- FOOTNOTE ---------- */
+  .note{
+    margin-top:26px;border-top:1px solid var(--rule);padding-top:16px;
+    font-size:13px;color:var(--ink-soft);max-width:70ch;
+  }
+  .note b{color:var(--ink)}
+  footer{padding:26px 0 48px;font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--muted)}
+
+  @media (prefers-reduced-motion:reduce){
+    *{transition:none!important;animation:none!important}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <span class="eyebrow">Priorizador de automações · arkynIA tech</span>
+    <h1>Qual tarefa manual está <span class="stroke">te custando mais?</span></h1>
+    <p class="lede">Adicione as tarefas repetitivas da sua operação. A fila se <b>reordena sozinha</b> pelo dinheiro que cada uma queima por mês — e diz o que automatizar primeiro. Em 2 minutos você sai com um ranking pra levar pra sua próxima reunião.</p>
+  </div>
+</header>
+
+<div class="totals" id="totals" hidden>
+  <div class="totals-in">
+    <div class="tot"><span class="k">Trabalho manual / mês</span><span class="v" id="totHoras">0 h</span></div>
+    <div class="tot"><span class="k">Custo / mês</span><span class="v debit" id="totMes">R$ 0</span></div>
+    <div class="tot"><span class="k">Custo / ano</span><span class="v debit" id="totAno">R$ 0</span></div>
+    <div class="tot push"><span class="k">Equivale a</span><span class="v small" id="totFte">—</span></div>
+  </div>
+</div>
+
+<main class="wrap">
+
+  <section>
+    <p class="sec-label">1 · Monte sua fila</p>
+    <div class="chips" id="chips"></div>
+
+    <div class="who">
+      <span class="q">Quem faz isso hoje?</span>
+      <div class="seg" id="whoSeg">
+        <button data-v="200">Eu mesmo · R$200/h</button>
+        <button data-v="100" class="on">Gestor · R$100/h</button>
+        <button data-v="50">Analista/SDR · R$50/h</button>
+      </div>
+      <span class="custo-out" id="custoOut">R$ 100/h</span>
+    </div>
+  </section>
+
+  <section>
+    <p class="sec-label">2 · A fila de prioridade <span class="mono" style="letter-spacing:0">(se reordena sozinha)</span></p>
+    <div id="fila">
+      <div class="empty" id="empty">Toque numa tarefa acima pra começar.<br>A que mais custa sobe pro topo.</div>
+    </div>
+  </section>
+
+  <section>
+    <div class="verdict-box" id="vbox" hidden>
+      <p class="cap">O veredito da sua fila</p>
+      <p class="line" id="vline"></p>
+      <p class="sub" id="vsub"></p>
+      <a class="cta" href="#" id="cta" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.47 14.38c-.3-.15-1.73-.85-2-.95-.27-.1-.46-.15-.66.15-.19.3-.76.95-.93 1.14-.17.2-.34.22-.63.08-.3-.15-1.25-.46-2.38-1.47-.88-.78-1.47-1.75-1.65-2.05-.17-.3-.02-.46.13-.6.13-.13.3-.34.44-.51.15-.17.2-.29.3-.49.1-.2.05-.37-.02-.51-.08-.15-.66-1.59-.9-2.18-.24-.57-.48-.5-.66-.5l-.57-.01c-.2 0-.51.07-.78.37-.27.3-1.02 1-1.02 2.43 0 1.43 1.04 2.81 1.19 3.01.15.2 2.05 3.13 4.97 4.39.69.3 1.23.48 1.65.61.69.22 1.32.19 1.82.12.56-.08 1.73-.71 1.97-1.39.24-.68.24-1.27.17-1.39-.07-.12-.27-.19-.57-.34zM12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38a9.9 9.9 0 0 0 4.79 1.22h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.02A9.86 9.86 0 0 0 12.04 2z"/></svg>
+        Chamar o Mohamad no WhatsApp
+      </a>
+    </div>
+
+    <p class="note"><b>Como ler isto.</b> Os números são direcionais, não uma auditoria: partem do que <i>você</i> declarou de frequência, tempo e custo/hora. O ranking cruza o custo mensal com a complexidade de automação (uma tarefa cara e simples de automatizar vence uma cara e complexa). Ajuste os controles até o resultado parecer honesto pra você — a fila que sobrar é o seu plano.</p>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">arkynIA tech — automações que devolvem o seu tempo. Feito pra você usar, imprimir e discutir.</div>
+</footer>
+
+<script>
+(function(){
+  "use strict";
+
+  /* >>>>> TROQUE AQUI ANTES DE PUBLICAR <<<<<
+     Seu WhatsApp com DDI + DDD + número, só dígitos. Ex: 5511998877665 */
+  var WHATSAPP = "5511922223558";
+
+  var PRESETS = [
+    {n:"Digitar comprovantes / conciliação", f:10, m:15, cx:1},
+    {n:"Responder 1º contato de lead no WhatsApp", f:25, m:10, cx:2},
+    {n:"Atualizar CRM depois da call", f:12, m:15, cx:1},
+    {n:"Montar proposta comercial", f:4, m:90, cx:2},
+    {n:"Follow-up manual de leads parados", f:15, m:8, cx:1},
+    {n:"Agendar e confirmar reuniões", f:10, m:6, cx:1},
+    {n:"Qualificar lead que chegou", f:20, m:12, cx:2},
+    {n:"Relatório semanal pra diretoria", f:1, m:120, cx:2}
+  ];
+  var CX_LABEL = ["","Simples","Média","Complexa"];
+  var CX_DIV   = [0,1,2,3.5];
+
+  var tasks = [];
+  var uid = 0;
+  var custoHora = 100;
+
+  var $ = function(id){ return document.getElementById(id); };
+  var fila = $("fila"), emptyEl = $("empty");
+
+  function brl(n){ return n.toLocaleString("pt-BR",{maximumFractionDigits:0}); }
+
+  /* ----- presets ----- */
+  var chipsEl = $("chips");
+  PRESETS.forEach(function(p,i){
+    var b = document.createElement("button");
+    b.className = "chip"; b.type = "button";
+    b.textContent = "+ " + p.n;
+    b.addEventListener("click", function(){
+      b.classList.add("used");
+      addTask(p.n, p.f, p.m, p.cx);
+    });
+    chipsEl.appendChild(b);
+  });
+  var custom = document.createElement("button");
+  custom.className = "chip custom"; custom.type = "button";
+  custom.textContent = "+ outra tarefa…";
+  custom.addEventListener("click", function(){
+    var n = prompt("Qual tarefa manual?");
+    if(n && n.trim()) addTask(n.trim(), 5, 15, 2);
+  });
+  chipsEl.appendChild(custom);
+
+  /* ----- custo/hora ----- */
+  $("whoSeg").addEventListener("click", function(e){
+    var b = e.target.closest("button"); if(!b) return;
+    Array.prototype.forEach.call(this.querySelectorAll("button"), function(x){ x.classList.remove("on"); });
+    b.classList.add("on");
+    custoHora = +b.dataset.v;
+    $("custoOut").textContent = "R$ " + custoHora + "/h";
+    render();
+  });
+
+  /* ----- model ----- */
+  function calc(t){
+    var horasMes = t.f * t.m * 4.33 / 60;
+    var custoMes = horasMes * custoHora;
+    var score = custoMes / CX_DIV[t.cx];
+    var verdict, vc;
+    if (custoMes >= 800 && t.cx <= 2){ verdict = "Automatize já"; vc = "v-now"; }
+    else if (custoMes < 800 && t.cx === 1){ verdict = "Ganho rápido"; vc = "v-quick"; }
+    else if (custoMes >= 800){ verdict = "Vale o projeto"; vc = "v-project"; }
+    else { verdict = "Deixe pra depois"; vc = "v-later"; }
+    return { horasMes:horasMes, custoMes:custoMes, score:score, verdict:verdict, vc:vc };
+  }
+
+  function addTask(n,f,m,cx){
+    tasks.push({ id:++uid, n:n, f:f, m:m, cx:cx });
+    buildTicket(tasks[tasks.length-1]);
+    render();
+    if (tasks.length === 1){
+      $("totals").hidden = false; $("vbox").hidden = false;
+    }
+  }
+
+  function removeTask(id){
+    tasks = tasks.filter(function(t){ return t.id !== id; });
+    var el = fila.querySelector('[data-id="'+id+'"]');
+    if (el) el.remove();
+    render();
+    if (!tasks.length){ $("totals").hidden = true; $("vbox").hidden = true; }
+  }
+
+  /* ----- ticket DOM ----- */
+  function buildTicket(t){
+    var el = document.createElement("article");
+    el.className = "ticket"; el.dataset.id = t.id;
+    el.innerHTML =
+      '<div class="t-head">' +
+        '<span class="t-pos mono">—</span>' +
+        '<div style="flex:1">' +
+          '<p class="t-name"></p>' +
+          '<span class="verdict"></span>' +
+        '</div>' +
+        '<div class="t-money"><div class="rs">R$ 0</div><div class="cap">por mês</div></div>' +
+      '</div>' +
+      '<div class="t-ctrls">' +
+        '<div class="ctrl"><label>Vezes / semana <output class="o-f"></output></label>' +
+          '<input type="range" class="r-f" min="1" max="60" step="1"></div>' +
+        '<div class="ctrl"><label>Minutos / vez <output class="o-m"></output></label>' +
+          '<input type="range" class="r-m" min="2" max="180" step="1"></div>' +
+        '<div class="ctrl cx"><label>Automação</label>' +
+          '<div class="seg">' +
+            '<button type="button" data-cx="1">Simples</button>' +
+            '<button type="button" data-cx="2">Média</button>' +
+            '<button type="button" data-cx="3">Complexa</button>' +
+          '</div></div>' +
+      '</div>' +
+      '<div class="t-meta"><span class="m-h mono"></span><button type="button" class="t-del">remover</button></div>';
+
+    el.querySelector(".t-name").textContent = t.n;
+    var rf = el.querySelector(".r-f"), rm = el.querySelector(".r-m");
+    rf.value = t.f; rm.value = t.m;
+
+    rf.addEventListener("input", function(){ t.f = +rf.value; render(); });
+    rm.addEventListener("input", function(){ t.m = +rm.value; render(); });
+    el.querySelector(".cx .seg").addEventListener("click", function(e){
+      var b = e.target.closest("button"); if(!b) return;
+      t.cx = +b.dataset.cx; render();
+    });
+    el.querySelector(".t-del").addEventListener("click", function(){ removeTask(t.id); });
+
+    fila.appendChild(el);
+  }
+
+  /* ----- render + FLIP reorder ----- */
+  function render(){
+    emptyEl.style.display = tasks.length ? "none" : "";
+
+    var els = {};
+    var before = {};
+    Array.prototype.forEach.call(fila.querySelectorAll(".ticket"), function(el){
+      els[el.dataset.id] = el;
+      before[el.dataset.id] = el.getBoundingClientRect().top;
+    });
+
+    var scored = tasks.map(function(t){ var c = calc(t); return { t:t, c:c }; });
+    scored.sort(function(a,b){ return b.c.score - a.c.score; });
+
+    var totH = 0, totC = 0;
+
+    scored.forEach(function(item, i){
+      var t = item.t, c = item.c, el = els[t.id];
+      if (!el) return;
+      totH += c.horasMes; totC += c.custoMes;
+
+      el.querySelector(".t-pos").textContent = String(i+1).padStart(2,"0");
+      el.querySelector(".rs").textContent = "R$ " + brl(Math.round(c.custoMes));
+      var vd = el.querySelector(".verdict");
+      vd.textContent = c.verdict; vd.className = "verdict " + c.vc;
+      el.querySelector(".o-f").textContent = t.f + "x";
+      el.querySelector(".o-m").textContent = t.m + " min";
+      el.querySelector(".m-h").textContent = c.horasMes.toFixed(1).replace(".",",") + " h/mês de trabalho manual";
+      Array.prototype.forEach.call(el.querySelectorAll(".cx .seg button"), function(b){
+        b.classList.toggle("on", +b.dataset.cx === t.cx);
+      });
+      el.classList.toggle("rank-1", i === 0);
+      fila.appendChild(el);
+    });
+
+    Object.keys(els).forEach(function(id){
+      var el = els[id];
+      var delta = before[id] - el.getBoundingClientRect().top;
+      if (delta){
+        el.style.transition = "none";
+        el.style.transform = "translateY(" + delta + "px)";
+        requestAnimationFrame(function(){
+          el.style.transition = "transform .35s cubic-bezier(.2,.8,.2,1)";
+          el.style.transform = "";
+        });
+      }
+    });
+
+    $("totHoras").textContent = totH.toFixed(0) + " h";
+    $("totMes").textContent = "R$ " + brl(Math.round(totC));
+    $("totAno").textContent = "R$ " + brl(Math.round(totC*12));
+    var fte = totH / 176 * 100;
+    $("totFte").textContent = fte >= 1 ? fte.toFixed(0) + "% de um funcionário" : "—";
+
+    if (scored.length){
+      var top = scored[0];
+      $("vline").innerHTML = "Só <span class='hl'>“" + top.t.n + "”</span> queima <span class='hl'>R$ " +
+        brl(Math.round(top.c.custoMes)) + "/mês</span> da sua operação.";
+
+      var msg = "Oi Mohamad! Rodei o priorizador da arkynIA e minha tarefa nº 1 é \"" + top.t.n +
+                "\" — tá queimando ~R$ " + brl(Math.round(top.c.custoMes)) +
+                "/mês. Bora conversar sobre automatizar isso?";
+      var waHref = "https://wa.me/" + WHATSAPP + "?text=" + encodeURIComponent(msg);
+      $("cta").setAttribute("href", waHref);
+      $("cta").onclick = function(e){
+        if (WHATSAPP === "SEU_NUMERO_AQUI"){
+          e.preventDefault();
+          alert("Troque a variável WHATSAPP no topo do script pelo seu número (DDI+DDD+número) antes de publicar.");
+        }
+      };
+
+      $("vsub").textContent = scored.length > 1
+        ? "E esse é só o nº 1 de " + scored.length + " tarefas na fila. Automatizar as marcadas como “Automatize já” costuma se pagar no primeiro mês."
+        : "Adicione as outras tarefas da sua rotina pra ver o ranking completo.";
+    }
+  }
+})();
+</script>
+</body>
+</html>
